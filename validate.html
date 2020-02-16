@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang='en'><head><title>Validate: ES-utils</title><meta charset='utf-8'/>
+<script src='./util.js'></script>
+</head><body>
+<h2>Open the console.</h2>
+<script>
+"use strict";
+const { Type, Index, Pool, capture, callHistory, forEach, partition, RingBuffer } = $UC_esutil,
+types = [undefined,null,true,12.3,123n,'hello',new Date(),/regex/,Symbol(),() => 'foo',function*(){},async function(){},{},[],new Map(),new Set(),
+  new ArrayBuffer(64),new SharedArrayBuffer(64),new DataView(new ArrayBuffer(64)),new Uint32Array(4),
+  new Error('test'),new SyntaxError('test2'),
+  Object.defineProperties(new Set(['Cannot be fooled!']), { [Symbol.toStringTag]: { value: 'Bogus' }})];
+let a, f, h, i = 0, o, p, r, t = {}, u;
+function elog(s) { console.log('%c' + s, 'color:khaki;'); eval(s); }
+function log(...a) { console.log(...a); }
+
+log('%c MEANINGFUL TYPE DISCRIMINATION ', 'color:black;background-color:green;');
+for (const e of types) t[i++] = { 'typeof': typeof e, 'Symbol.toStringTag': Type.tag(e), 'Type()': Type(e) }
+console.table(t);
+
+log('%c BOUNDS-CHECKED INDEX VALIDATION ', 'color:black;background-color:green;');
+elog("t = ['first','second','third']; log(t[Type.asIndex('0')], t[Type.asIndex(99, 3, 1)], t[Type.asIndex('foo', 3, 2)]);");
+
+log('%c CREATE AN OBJECT WITH SPECIFIED ATTRIBUTES (default: enumerable) ', 'color:black;background-color:green;');
+elog("t = Type.create({}, { foo: 88, 'bar,alias1,alias2:7': 99 }); log(Object.getOwnPropertyDescriptors(t)); log(t.bar, t.alias2 = 5, t.alias1, t.bar);");
+log('%c...or add properties to an existing object', 'color:green;');
+elog("log(Object.getOwnPropertyDescriptors(Type.add({ foo: 23 }, { bar: 83, yadda: 'something' })));");
+log('%c...or merge elements from one container to another', 'color:green');
+elog("log(Type.merge(new Map([['foo',64]]), { bar: 23 }));");
+
+log('%c POINTER-LIKE VALUES ALLOW POST-INCREMENT EXPRESSIONS ', 'color:black;background-color:green;');
+elog("t = Index(); log(t.value, t(4), t(6), t.value, t(35), t.value);");
+log('%c...with optional ring-buffer wrapping behavior...', 'color:green;');
+elog("t = Index(0, 0xff); log(t(64), t(64), t(64), t(64), t(64), t.value);");
+log('%c...or block-spanning behavior (first element is block length)...', 'color:green;');
+elog("t = Index([300, 0, 1000]); log(t(64), t(64), t(64), t(64), t(64), t.value);");
+elog("t = Index([[1000, 128], [2000,256], [3000, 256]]); log(t(64), t(64), t(64), t(64), t(64), t(64), t(64), t.value);");
+log('%c...or a user-supplied block allocator function', 'color:green;');
+elog("a = [1000, 2000]; i = 0;\nt = Index(() => [a[i++], 256]); log(t(64), t(64), t(64), t(64), t(64), t.value);");
+
+log('%c POOL KEEPS TRACK OF IDLE OBJECTS THAT ARE EXPENSIVE TO RECREATE ', 'color:black;background-color:green;');
+elog("f = function() { let r = 0; for (let i = 0; i < 100000000; ++i) r += i; return r; }; p = Pool(10, f);");
+elog("console.time('uncached'); t = p(); console.timeEnd('uncached'); p.free(t); console.time('cached'); t = p(); console.timeEnd('cached');");
+
+log('%c RETURN ONLY THE CAPTURES OF REGULAR EXPRESSIONS, WITH DEFAULT VALUES ', 'color:black;background-color:green;');
+elog("log(capture('abbbbddd', /(ab*)(c+)?/, 'ab', 'c'));");
+log('%c...if dates or numbers are supplied as a default, the corresponding field is coerced to that type', 'color:green;');
+elog("log(capture('12345 number 2000-01-01 date', /(\\d+) (number) ([^ ]*) (date)/, 999, 999, new Date(), new Date()));");
+
+log('%c UNIFORM ITERATION FOR ALL CONTAINER TYPES ', 'color:black;background-color:green;');
+elog("t = {}; forEach({foo: 10, bar: 20}, (v, k, a, _, i) => t[i] = { key: k, value: v }); console.table(t);");
+elog("t = {}; forEach(['foo', 'bar'], (v, k, a, _, i) => t[i] = { key: k, value: v }); console.table(t);");
+elog("t = {}; forEach(new Map([['foo', 10], ['bar', 20]]), (v, k, a, _, i) => t[i] = { key: k, value: v }); console.table(t);");
+elog("t = {}; forEach(new Set(['foo', 'bar']), (v, k, a, _, i) => t[i] = { key: k, value: v }); console.table(t);");
+log('%cStrings can be iterated by characters', 'color:green;');
+elog("t = []; forEach('\u262f balance', c => t.push(c)); log(t);");
+log('%cThe accumulator allows complex tests or extractions to be written as expressions---a superset of #some, #every and #reduce...', 'color:green;');
+elog("log(forEach('abcdefghijklm', (v, k, a) => { if (v > 'f') a.push(v); return a; }, []));");
+log('%cA finalizer can be used to convert statements to expressions', 'color:green;');
+elog("log(forEach(['foo','bar'], (v, k, a) => a += `<li>${v}</li>`, '', a => `<ul>${a}</ul>`));");
+log('%cProperties are iterated over even if they\'re defined on container objects, but can be filtered out by ID parameter, or by setting max_properties to zero.', 'color:green');
+elog("t = Object.defineProperties(['foo','bar'], { yadda: { enumerable: true, value: 46 }, hidden: { value: 764 }});");
+elog("forEach(t, (v, k, a, t, i) => console.log(i, k, v, t));");
+elog("forEach(t, (v, k, a, t, i) => console.log(i, k, v, t), null, null, null, null, null, 0);");
+
+log('%c YOU CAN RECORD A FUNCTION\'S CALL HISTORY FOR LATER ANALYSIS ', 'color:black;background-color:green;');
+elog("f = callHistory(s => 'result of ' + s, 2); // allow 2**2 elements of history, just to test");
+elog("f('first call'); f('second call'); f('third call'); f('fourth call'); f('should wrap'); f('ooops!');");
+elog("console.table(f.history);");
+log('%c...but it\'s not without a cost in efficiency', 'color:green;');
+elog("f = i => t += i + Math.random(); h = callHistory(i => t += i + Math.random());");
+elog("t = 0; console.time('raw'); for (let i = 0; i < 1000000; ++i) f(i); console.timeEnd('raw');");
+elog("t = 0; console.time('rec'); for (let i = 0; i < 1000000; ++i) h(i); console.timeEnd('rec');");
+
+log('%c SORT A NUMBER INTO ONE OF SEVERAL BINS (PARTITIONING) ', 'color:black;background-color:green;');
+elog("t = []; for (const e of [0,24,25,26,49,50,51,74,75,76,99,100,101]) t.push([e, partition(e, [[25,0],[50,1],[75,2],[100,3]], 4)]); console.log(t);");
+
+log('%c RING BUFFERS HAVE CONSTANT INSERT/REMOVE TIME AT BOTH ENDS ', 'color:black;background-color:green;');
+log('%c>> 64 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 64; ++i) a.push(i); for (let i = 0; i < 64; ++i) t += a.pop(); } console.timeEnd('array');");
+elog("r = RingBuffer(); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 64; ++i) r.push(i); for (let i = 0; i < 64; ++i) u += r.pop(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+log('%c>> 256 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 256; ++i) a.push(i); for (let i = 0; i < 256; ++i) t += a.pop(); } console.timeEnd('array');");
+elog("r = RingBuffer(9); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 256; ++i) r.push(i); for (let i = 0; i < 256; ++i) u += r.pop(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+log('%c>> 1024 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 1024; ++i) a.push(i); for (let i = 0; i < 1024; ++i) t += a.pop(); } console.timeEnd('array');");
+elog("r = RingBuffer(11); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 1024; ++i) r.push(i); for (let i = 0; i < 1024; ++i) u += r.pop(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+log('%c>> reverse, 64 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 64; ++i) a.unshift(i); for (let i = 0; i < 64; ++i) t += a.shift(); } console.timeEnd('array');");
+elog("r = RingBuffer(); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 64; ++i) r.queue(i); for (let i = 0; i < 64; ++i) u += r.unqueue(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+log('%c>> reverse, 256 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 256; ++i) a.unshift(i); for (let i = 0; i < 256; ++i) t += a.shift(); } console.timeEnd('array');");
+elog("r = RingBuffer(9); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 256; ++i) r.queue(i); for (let i = 0; i < 256; ++i) u += r.unqueue(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+log('%c>> reverse, 1024 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 1024; ++i) a.unshift(i); for (let i = 0; i < 1024; ++i) t += a.shift(); } console.timeEnd('array');");
+elog("r = RingBuffer(11); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 1024; ++i) r.queue(i); for (let i = 0; i < 1024; ++i) u += r.unqueue(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+log('%c>> queue, 64 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 64; ++i) a.unshift(i); for (let i = 0; i < 64; ++i) t += a.pop(); } console.timeEnd('array');");
+elog("r = RingBuffer(); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 64; ++i) r.queue(i); for (let i = 0; i < 64; ++i) u += r.pop(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+log('%c>> queue, 256 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 256; ++i) a.unshift(i); for (let i = 0; i < 256; ++i) t += a.pop(); } console.timeEnd('array');");
+elog("r = RingBuffer(9); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 256; ++i) r.queue(i); for (let i = 0; i < 256; ++i) u += r.pop(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+log('%c>> queue, 1024 elements...', 'color:green;');
+elog("a = []; t = 0; console.time('array'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 1024; ++i) a.unshift(i); for (let i = 0; i < 1024; ++i) t += a.pop(); } console.timeEnd('array');");
+elog("r = RingBuffer(11); u = 0; console.time('ring'); for (let j = 0; j < 1024; ++j) { for (let i = 0; i < 1024; ++i) r.queue(i); for (let i = 0; i < 1024; ++i) u += r.pop(); } console.timeEnd('ring'); console.log(`${t} =? ${u}`);");
+</script>
+</body></html>

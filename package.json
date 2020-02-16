@@ -1,0 +1,27 @@
+{
+  "name": "@undercat/esutil",
+  "version": "1.0.0",
+  "description": "Grab-bag of useful ES6 convenience functions.",
+  "keywords": [
+    "type-discrimination",
+    "property-transfer",
+    "alias-generation",
+    "option-processing",
+    "pseudo-pointer",
+    "ring-buffer",
+    "range-binning",
+    "call-history",
+    "iteration",
+    "pooling",
+    "debug",
+    "file-minification"
+  ],
+  "repository": "github:undercat/esutil.git",
+  "author": "Kevin M. Kilbride <gitbugs@kevinmkilbride.info> (https://kevinmkilbride.info/)",
+  "license": "MIT",
+  "main": "util.js",
+  "scripts": {
+    "build": "node minify util.js util_min.js && gzip -k -f -9 util_min.js",
+    "test": "node validate.js"
+  }
+}
