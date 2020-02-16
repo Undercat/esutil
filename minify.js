@@ -30,12 +30,6 @@ b = b.replace(/([`~!@#%^&*()\-=+[\]{}|;:,.<>/?'"])\s+/g, (_,m) => m).replace(/\s
 b = b.replace(/\;([)}\]])/g, (_,m) => m);
 // ensure stict mode clauses have canonical form
 b = b.replace(/(\'use strict\'|\"use strict\")(.)/sg, (_,m,c) => m + (c == ';' ? c : ';' + c));
-// optimize aliased property access by using the fastest accessor (this code is fragile, but making it robust would require a parser)
-let list = [...b.matchAll(/(?<!case\s*)['"]([^'"]+)['"]\:/g)];
-for (const e of list) {
-  let [k, ...aliases] = e[1].split(','); k = /[^$_0-9a-zA-Z]/.test(k) ? `this['${k}']` : /^\d/.test(k) ? `this[${k}]` : 'this.' + k;
-  for (const a of aliases) b = b.replace(new RegExp(`this\\.${a}([^$_0-9a-zA-Z])|this\\[['"]?${a}['"]?\\]`, 'g'), (_,m) => k + m);
-}
 // undo string protection and convert newlines back
 let target = b.replace(/\x1f/g, ' ').replace(/\x1e/g, '\n').replace(/\x1d/g, '/');
 // ...done

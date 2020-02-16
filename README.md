@@ -489,13 +489,9 @@ Map(12) {
 This function is implemented as a binary search on <i>partition_array</i>, so it can scale to very large partitions with little run-time penalty. The downside, if any, is that <i>partition_array</i> must be sorted in strictly-increasing order by cut-off values.
 
 ## Minifier Utility
-Included in this distribution is a modest (read that as: "not very robust") minification utility that can perform 'alias-aware' variable name substitution for properties referencing 'this' (doing more general substitution would require ferreting out the controlling variable in a variety of tricky edge cases, and that would require a complete parser).
+Included in this distribution is a modest (read that as: "not very robust") minification utility. Unlike most minifiers, <i>line numbers are preserved between the source and target files</i>. The newline character is itself a statement terminator in ECMAScript and can often substitute for a semicolon, so there isn't much to be gained from eliminating newlines.
 
-Variable substitution can be handy to insure that all access to a particular property is by the fastest accessor; namely, the primary (first) key, since aliases are getters/setters that simply point to the primary key.
-
-Unlike most minifiers, <i>line numbers will be preserved between the source and target files</i>. The newline character is itself a statement terminator in ECMAScript and can often substitute for a semicolon, so there isn't as much to be gained from eliminating newlines as you might think.
-
-The benefit of preserving line structure in the minified file is that you can use it without a code map. You can simply open up the <i>un</i>-minified file and navigate directly to the reported line. There's very little difference in compressability between files that use newlines as terminators and files that do not...<i>provided that you do not leave in huge, vertical blocks of comments that minify to vast, empty expanses of whitespace</i>. I feel that a good readme file is worth thousands of lines of cryptic comments, anyway. Comments that are placed at the end of a line will minify out completely, however.
+The benefit of preserving line structure in the minified file is that you can use it without a code map. You can simply open up the <i>un</i>-minified file and navigate directly to the reported line. There's very little difference in compressability between files that use newlines as terminators and files that do not...<i>provided that you do not leave in huge, vertical blocks of comments that minify to vast, empty expanses of whitespace</i>. Comments that are placed at the end of a line will minify out completely, however.
 
 To run the minifier, use `node minify my_source_file.js my_target_file.js`. If you leave out the target, the result will be dumped to standard output.
 
