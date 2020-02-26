@@ -18,6 +18,8 @@ A collection of powerful utility functions that are generally too small to merit
 - [Bounds-check array indices before use](#typeasindex), with default value support.
 - [Wrap expensive object allocators](#pool) with a very simple pooler.
 
+[open live demo](https://raw.githubusercontent.com/undercat/esutil/c0f85c0fb8246beabf86ace50527d7f7843e5bcf/validate.html)
+
 ### Installation
 
 `npm install @undercat/esutil`
@@ -45,7 +47,6 @@ The file itself is written as a CommonJS module, and when it is used in the brow
 Incidentally, it is impossible to write a single file that loads as both a CommonJS module and an ECMAScript module because **export** is a privileged keyword that cannot be conditionally executed or overloaded _and_ it throws if it is not satisfied or is encountered in a file not loaded as a module _and_ the error cannot be caught because the keyword is restricted to the global scope (and therefore cannot be wrapped in a `try/catch` block). If **export** failed with a non-fatal warning, like much of the rest of ECMAScript that deals with resources, there would be no problem writing actual modules that could load as CommonJS and ES6 simultaneously.
 
 ## API Description
-[N.B. For a complete demonstration of all functions offered, run the `validate.js` or `validate.html` files. The output will be written to the console, with some explanatory text.]
 
 <h3 id='type'>Type(<i>var</i>);</h3>
 
