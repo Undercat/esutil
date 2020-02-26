@@ -1,16 +1,17 @@
 <!DOCTYPE html><html lang='en'><head><title>Validate: ES-utils</title><meta charset='utf-8'/>
-<script src='./util.js'></script>
+<script src='./util_min.js'></script>
 </head><body>
 <h2>Open the console.</h2>
+If the tables do not render, refresh the page.<br/>Chrome often bugs out on 'console.table' on first load.
 <script>
 "use strict";
 const { Type, Index, Pool, capture, callHistory, forEach, partition, RingBuffer } = $UC_esutil,
 types = [undefined,null,true,12.3,123n,'hello',new Date(),/regex/,Symbol(),() => 'foo',function*(){},async function(){},{},[],new Map(),new Set(),
-  new ArrayBuffer(64),new SharedArrayBuffer(64),new DataView(new ArrayBuffer(64)),new Uint32Array(4),
+  new ArrayBuffer(64),new DataView(new ArrayBuffer(64)),new Uint32Array(4),
   new Error('test'),new SyntaxError('test2'),
   Object.defineProperties(new Set(['Cannot be fooled!']), { [Symbol.toStringTag]: { value: 'Bogus' }})];
 let a, f, h, i = 0, o, p, r, t = {}, u;
-function elog(s) { console.log('%c' + s, 'color:khaki;'); eval(s); }
+function elog(s) { console.log('%c' + s, 'color:goldenrod;'); eval(s); }
 function log(...a) { console.log(...a); }
 
 log('%c MEANINGFUL TYPE DISCRIMINATION ', 'color:black;background-color:green;');
