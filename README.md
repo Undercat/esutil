@@ -18,8 +18,6 @@ A collection of powerful utility functions that are generally too small to merit
 - [Bounds-check array indices before use](#typeasindex), with default value support.
 - [Wrap expensive object allocators](#pool) with a very simple pooler.
 
-[open live demo](https://raw.githubusercontent.com/undercat/esutil/c0f85c0fb8246beabf86ace50527d7f7843e5bcf/validate.html)
-
 ### Installation
 
 `npm install @undercat/esutil`
