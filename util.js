@@ -15,7 +15,7 @@ const $UC_esutil = (function() {'use strict';
   function fixPD(o, ta = 11, sa = 1) {
     const pd = Object.getOwnPropertyDescriptors(o);
     for (const [k, v] of Object.entries(pd)) {
-      if ((((v.configurable ? 4 : 0) + (v.writable ? 2 : 0) + (v.enumerable ? 1 : 0)) & sa) != sa) { delete pk[k]; continue; }
+      if ((((v.configurable ? 4 : 0) + (v.writable ? 2 : 0) + (v.enumerable ? 1 : 0)) & sa) != sa) { delete pd[k]; continue; }
       const m = k.match(kre); if (m) {
         const [p, ...a] = m[1].split(','), t = m[3] !== undefined ? Number(m[3]) : ta;
         if (m[2] && !('value' in v)) throw new Error('Derived getter/setter must be from a value, not a getter/setter itself.');
