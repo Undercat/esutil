@@ -1,7 +1,5 @@
 # Miniature power tools for ECMAScript.
 
-![License](https://img.shields.io/badge/license-MIT-blue) ![Version](https://img.shields.io/badge/version-1.0.0-blue) ![Size](https://img.shields.io/badge/source_size-11k-blue) ![GZip Size](https://img.shields.io/badge/gzip_size-2714-blue)
-
 A collection of powerful utility functions that are generally too small to merit implementation as stand-alone modules.
 
 - [Accurately discriminate variable types](#type) (not fooled by toStringTag overloading).
@@ -70,7 +68,7 @@ Similar to `Object.prototype.toString.call()`, but reads directly from the relev
 Equivalent to `Object.getOwnPropertyDescriptors(obj)`.
 
 ---
-<h3 id='typefixpd'>Type.fixPD(<i>source</i>, <i>attribute_default</i>, <i>source_filter</i>);<br>Type.create(<i>prototype</i>, <i>source</i>, <i>attribute_default</i>, <i>source_filter</i>);<br>Type.add(<i>target</i>, <i>source</i>, <i>attribute_default</i>, <i>source_filter</i>);</h3>
+<h3 id='typefixpd'>Type.fixPD(<i>source</i>, <i>attribute_default</i>, <i>source_filter</i>, [<i>container</i>]);<br>Type.create(<i>prototype</i>, <i>source</i>, <i>attribute_default</i>, <i>source_filter</i>, [<i>container</i>]);<br>Type.add(<i>target</i>, <i>source</i>, <i>attribute_default</i>, <i>source_filter</i>, [<i>container</i>]);</h3>
 
 <dl>
 <dt>prototype</dt><dd>The prototype to use (when creating a new object).</dd>
@@ -91,24 +89,30 @@ Equivalent to `Object.getOwnPropertyDescriptors(obj)`.
 
 The default attributes can be overridden on a per-property basis by appending a colon and digit to the property-name-string (see example below).
 </dd>
-<dt>source_filter</dt><dd>Only those properties in <i>source</i> having these attributes will be considered when generating new target properties. Uses the same octal schema as <i>default_attributes</i>, above.</dd>
-<dt>(return value)</dt><dd>Type.fixPD() returns an object containing 'fixed' property descriptors for <i>source</i>.<br>
-Type.create() returns a new object created from 'fixed' property descriptors.<br>
-Type.add() returns <i>target</i> with the 'fixed' properties added to it.
+<dt>source_filter</dt><dd>Only those properties in <code>source</code> having these attributes will be considered when generating new target properties. Uses the same octal schema as <code>default_attributes</code>, above.</dd>
+<dt>container</dt><dd>When using the '&#42;' syntax (see below), the backing object for hidden values can optionally be be reflected into the result, allowing those hidden values to be accessed directly. The <code>container</code> parameter gives the name to use for this reflection property. It defaults to '$', but can be set to <code>null</code> if you don&rsquo;t want the backing object to be reflected into the result at all.</dd>
+<dt>(return value)</dt><dd>Type.fixPD() returns an object containing the 'fixed' property descriptors from <code>source</code>.<br>
+Type.create() returns a new object created from the 'fixed' property descriptors.<br>
+Type.add() returns <code>target</code> object with the 'fixed' properties added to it.</dd>
 </dl>
 
-The _source_ object be defined with special key-strings that are parsed at runtime to determine what aliases, if any, to apply to the property, and/or how to override the default attributes for this property:
+The <code><b>source</b></code> object may contain special key-like-strings that specify...
+<ul>
+<li>what aliases, if any, should exist for a given property value,</li>
+<li>what attributes the values and accessors should have (enumerable, writeable, configurable), and</li>
+<li>whether values should be attached to the first name in the list, or &ldquo;hidden&rdquo; in a special backing object.</li>
+</ul>
+
 ```js
 const o = Type.create(Object.prototype, {
   'foo,alias:0': 123,
   'bar:5': function() { return this.foo; },
   'cat,dog,mammal,animal': true,
+  'paws,mits*': { value: 4, set: "if (typeof v == 'number') $v = v;" },
   raw: 'no aliases'
 });
 
 console.log(Object.getOwnPropertyDescriptors(o));
-```
-```
 {
   raw: {
     value: 'no aliases',
@@ -157,20 +161,123 @@ console.log(Object.getOwnPropertyDescriptors(o));
     set: [Function: set],
     enumerable: true,
     configurable: false
+  },
+  '$': {
+    value: { paws: 4 },
+    writable: false,
+    enumerable: false,
+    configurable: false
+  },
+  paws: {
+    get: [Function (anonymous)],
+    set: [Function: setter],
+    enumerable: true,
+    configurable: false
+  },
+  mits: {
+    get: [Function (anonymous)],
+    set: [Function: setter],
+    enumerable: true,
+    configurable: false
   }
 }
 ```
 ...as you can see, the resulting object 'o' has four properties and four aliases:
 - o.raw &#x21d2; an ordinary property that inherits the default attributes (enumerable+writable)
 - o.foo &#x21d2; a 'hidden' number that is not enumerable, writable or configurable
-- o.alias &#x21d2; an alias to _foo_
+- o.alias &#x21d2; an alias to <code>o.foo</code>
 - o.bar &#x21d2; an enumerable+configurable function reference
 - o.cat &#x21d2; a Boolean value
-- o.dog | o.mammal | o.animal &#x21d2; aliases to _cat_
+- o.dog | o.mammal | o.animal &#x21d2; aliases to <code>o.cat</code>
+- o.paws | o.mits &#x21d2; aliases to <code>o.$.paws</code>
 
-Aliases indirectly reference their data through getters/setters. Consequently, the primary key, which is always the first name in the list, will be slightly faster than its aliases, and its use should be preferred in critical loops. This holds true for _all_ getters/setters, mind you, not just those created by this module.
+The first property name in a key-list is used to label the actual <i>value</i>; all the other names in a list are accessors (getters/setters) of that first property name. If the optional '&#42;' suffix is added to a name list, the value for all the names in the list is instead stored in a &ldquo;hidden&rdquo; object&mdash;the first name in the list winds up being just another accessor to that value. These '&#42;'-lists take objects as arguments, and the sub-properties of those objects are very similar to those used by <code>Object.defineProperty()</code>, except that they are restricted to...
 
-The drawback to the property label processing scheme used by these functions is that it precludes the possibility of defining 'ordinary' property names that contains commas or colons. Since most people would probably not consider such names to be 'ordinary,' this was considered to be an acceptable trade-off.
+<dl>
+<dt>value</dt><dd>The value assigned to the hidden property value.</dd>
+<dt>get</dt><dd>A getter for the hidden value. Although &ldquo;normal&rdquo; aliases are also implemented as accessors, those default accessors provide no way for the user to override their logic. The '&#42;' syntax allows the user to define fully-custom accessors, which then are used by <i>all</i> the names in the list. The raw value can still be accessed directly, if there is a reference to the backing object in the result, which there is, by default, in the non-enumerable property '$'. If a custom getter is not defined by the user, a default getter that returns the hidden value will be used (in other words, this sub-property is optional).</dd>
+<dt>set</dt><dd>A setter for the hidden value. No default is provided, so if the user does not supply one, the resulting value will be read-only.</dd>
+
+Getters and setters defined using the '&#42;' syntax need not actually be functions, although that is still an option. Simple strings giving the relevant logic of the getter or setter will suffice. In those strings, the value supplied to a setter will be identified by the variable <code>v</code>. The actual backing variable itself can be accessed through <code>$v</code>. If you write an actual function, no such translation will be performed, and you will have to use the &ldquo;real&rdquo; object path to the backing variable, so you might have to write something like, <code>'foo,bar*': { value: 123, set(x) { this.$.foo = x; } }</code> instead of <code>'foo,bar*': { value: 123, set: '$v = v;' }</code>. Note that the path can change if you supply a <code>container</code> parameter, which sets the identifier name for the backing object.
+
+Performance-critical code may elect to bypass accessors and handle values directly, even for objects defined with the '&#42;' syntax. Ordinarily, the first name in the property name list is used to label the actual value, but if the '*' syntax is used, <i>all</i> the names will be aliases, and if you want direct access to the value, you will need to do it through the backing object reference, something like <code>myObject.$.myValue</code>. If you invoke <code>Type.fixPD()</code>, <code>Type.create()</code> or <code>Type.add()</code> with a null value for the <code>container</code> parameter, no reference to the backing object will appear in the resulting object, so there will be no &ldquo;fast path&rdquo; access to any such values.
+
+The drawback to this property label processing scheme is that it precludes the possibility of defining &ldquo;ordinary&rdquo; property names containing commas, colons or asterisks. Since most people probably do not consider such property names to be &ldquo;ordinary&rdquo; anyway, this was considered to be an acceptable trade-off.
+
+Another example will help clarify all this.
+
+```js
+const o = Type.create(Array.prototype, {
+  // The first property uses a functional style setter, so the data must be explicitly referenced.
+  'foo,a1*7': { value: 'text', set(x) { this.$$.foo = x + ' text'; }},
+  'bar,a2*1': { value: 123 },
+  // Using a string as a setter results in automatic source/target translation.
+  'a3*': { value: new Date(), set: "$v = (typeof v == 'string') ? new Date(v) : v;" }
+}, null, null, '$$');
+
+console.log(Object.getOwnPropertyDescriptors(o));
+
+-------
+// The data object gets reflected into the result with the name '$$' instead of the default '$'
+// It is never made enumerable, writeable or configurable. Moreover, it is sealed. (Not the values.)
+// If null had also been used for the 'container' parameter, the data would not have been reflected
+// and direct access would be impossible.
+  '$$': {
+    value: { foo: 'text', bar: 123, a3: '2020-04-30T14:17:25.866Z' },
+    writable: false,
+    enumerable: false,
+    configurable: false
+  },
+// 'foo' and 'a1' are both accessors for the value in '#.$$.foo'
+// The first name in the list is always used to label the value in the reflected data structure.
+  foo: {
+    get: [Function (anonymous)],
+    set: [Function: set],
+    enumerable: true,
+    configurable: true  // defined with '7' attribute flag := all options, including configurable
+  },
+  a1: {
+    get: [Function (anonymous)],
+    set: [Function: set],
+    enumerable: true,
+    configurable: true
+  },
+// 'bar' and 'a2' are accessors for '#.$$.bar'
+// Since no setter was declared for these, the value is read-only (unless read directly)
+  bar: {
+    get: [Function (anonymous)],
+    set: undefined,
+    enumerable: true,
+    configurable: false  // attribute flag was '1', so only enumerable
+  },
+  a2: {
+    get: [Function (anonymous)],
+    set: undefined,
+    enumerable: true,
+    configurable: false
+  },
+// 'a3' accesses '#.$$.a3'
+  a3: {
+    get: [Function (anonymous)],
+    set: [Function: setter],
+    enumerable: true,
+    configurable: false  // default attribute flag is '3' := enumerable+writeable
+  }
+// Note that accessors never have a 'writeable' attribute, so that flag value is irrelevant.
+-------
+
+console.log(o.foo);
+// => 'text'
+
+o.foo = 'hello'; console.log(o.a1);
+// => 'hello'
+
+o.a3 = '1980-10-01'; console.log(o.a3);
+// => 1980-10-01T00:00:00.000Z
+```
+
+If you do not reflect the data object into the result (i.e., if you use <code>null</code> as the container parameter), then you <i>must</i> declare all getters and setters using string style, as there will not be any way to access the data with 'this'.
+Since string-style getters and setters are translated at construction time, there is no need to use 'this' to reference any data.
 
 ---
 <h3 id='typefill'>Type.fill(<i>target</i>, <i>source</i>, [<i>filter</i>]);</h3>

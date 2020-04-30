@@ -17,13 +17,22 @@ elog("t = ['first','second','third']; log(t[Type.asIndex('0')], t[Type.asIndex(9
 
 log('\n\x1b[30;42m CREATE AN OBJECT WITH SPECIFIED ATTRIBUTES (default: enumerable for functions, enumerable+writable for everything else) \x1b[m');
 elog("t = Type.create(Object.prototype, { foo: 88, 'bar,alias1,alias2:7': 99 }); log(Object.getOwnPropertyDescriptors(t)); log(t.bar, t.alias2 = 5, t.alias1, t.bar);");
-log('\x1b[32m...or add properties to an existing object\x1b[m');
+log('\x1b[32m...you can hide property values, forcing public access through accessor aliases\x1b[m');
+elog(`t = Type.create(Object.prototype, { 'foo,alias1*': { value: 99, set: "if (typeof v == 'number') $v = v;" }, 'bar,alias2*': { value: 'word', set: "if (typeof v == 'string') $v = v;" }});`);
+elog(`log(Object.getOwnPropertyDescriptors(t));`);
+elog(`log(t.foo, t.alias1, t.bar, t.alias2);`);
+elog(`t.foo = 123; t.bar = 'changed'; log(t.foo, t.alias1, t.bar, t.alias2);`);
+elog(`t.foo = 'invalid'; t.bar = 235; log(t.foo, t.alias1, t.bar, t.alias2);`);
+log('\x1b[32m...but you can still get direct access to the values aliased this way via a hidden property\x1b[m');
+elog(`log(t); log(t.$);`);
+log('\x1b[32mYou can also add properties to an existing object\x1b[m');
 elog("log(Object.getOwnPropertyDescriptors(Type.add({ foo: 23 }, { bar: 83, yadda: 'something' })));");
 log('\x1b[32m...or merge elements from one container to another\x1b[m');
 elog("log(Type.merge(new Map([['foo',64]]), { bar: 23 }));");
-log('\x1b[32m...populate properties/aliases\x1b[m');
+log('\x1b[32m...and with fill(), you can even populate objects with values from another object...\x1b[m');
 elog("t = Type.create(Object.prototype, { 'color,foregroundColor': 'black', 'bgColor,backgroundColor': 'white' });");
 elog("log(Type.fill(t, { foregroundColor: 'red', backgroundColor: 'yellow', foo: 'bar' }));");
+log('\x1b[32m...allowing only valid properties through, and selecting from one of more aliases.\x1b[m');
 
 log('\n\x1b[30;42m POINTER-LIKE VALUES ALLOW POST-INCREMENT EXPRESSIONS \x1b[m');
 elog("t = Index(); log(t.value, t(4), t(6), t.value, t(35), t.value);");

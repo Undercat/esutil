@@ -1,6 +1,6 @@
 {
   "name": "@undercat/esutil",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Grab-bag of useful ES6 convenience functions.",
   "keywords": [
     "type-discrimination",

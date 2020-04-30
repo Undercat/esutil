@@ -11,32 +11,58 @@ const $UC_esutil = (function() {'use strict';
     if (p[Symbol.toStringTag]) return p[Symbol.toStringTag];
     return typeof p.constructor == 'function' ? p.constructor.name : 'Object';
   }
-  const kre = /^([^:?!]+)\:?([?!])?([0-7])?$/;
-  function fixPD(o, ta = 11, sa = 1) {
-    const pd = Object.getOwnPropertyDescriptors(o);
+  const kre = /^([^:?!*]+)(?:([:?!*])([0-7])?)?$/;
+  function fixPD(o, ta = 11, sa = 1, h = '$') {
+    if (typeof ta != 'number' || ta < 0 || ta > 11) ta = 11;
+    if (typeof sa != 'number' || sa < 0 || sa > 11) sa = 1;
+    const pd = Object.getOwnPropertyDescriptors(o), $ = {};
     for (const [k, v] of Object.entries(pd)) {
       if ((((v.configurable ? 4 : 0) + (v.writable ? 2 : 0) + (v.enumerable ? 1 : 0)) & sa) != sa) { delete pd[k]; continue; }
       const m = k.match(kre); if (m) {
         const [p, ...a] = m[1].split(','), t = m[3] !== undefined ? Number(m[3]) : ta;
-        if (m[2] && !('value' in v)) throw new Error('Derived getter/setter must be from a value, not a getter/setter itself.');
         switch (m[2]) {
-          case '?': if (!(p in pd)) pd[p] = {};
-            if (typeof v.value != 'function') throw new Error(`Value for derived getter '${k}' must be a function, not: ${v.value}`);
-            if (!('value' in pd[p])) pd[p].get = v.value; else throw new Error(`Cannot derive getter '${p}'; property already has value '${pd[p].value}'`); break;
-          case '!': if (!(p in pd)) pd[p] = {};
-            if (typeof v.value != 'function') throw new Error(`Value for derived setter '${k}' must be a function, not: ${v.value}`);
-            if (!('value' in pd[p])) pd[p].set = v.value; else throw new Error(`Cannot derive setter '${p}'; property already has value '${pd[p].value}'`); break;
-          default: if (!(p in pd)) pd[p] = {}; if ('value' in v) pd[p].value = v.value; if ('get' in v) pd[p].get = v.get; if ('set' in v) pd[p].set = v.set;
-        }
-        pd[p].enumerable = (t & 1) != 0;
-        if ('value' in pd[p]) pd[p].writable = (t & 2) != 0;
-        pd[p].configurable = (t & 4) != 0;
-        for (let e of a) { e = e.trim(); if (!(e in pd)) { pd[e] = { get: function() { return this[`${p}`]; }, set: function(v) { this[`${p}`] = v; }}}}
-        if (p != k) delete pd[k]; continue;
-    } } return pd;
+          case '*': { let getter, setter;
+            if (type(v) != 'Object' || type(v.value) != 'Object') throw new Error("'*'-key syntax requires an Object as its value.");
+            if (h != null && !(h in pd)) pd[h] = { value: $ };
+            $[p] = ('value' in v) ? v.value.value : undefined;
+            if ('get' in v.value) {
+              if (typeof v.value.get == 'function') getter = v.value.get;
+              if (typeof v.value.get == 'string') {
+                if (v.value.get[0] == '{') eval(`getter = function() ${v.value.get.replace(/\$v([^a-zA-Z0-9])?/g, (_,x) => `$.${p}${x}`)}`);
+                  else eval(`getter = () => ${v.value.get.replace(/\$v([^a-zA-Z0-9])?/g, (_,x) => `$.${p}${x}`)}`);
+              }
+            }
+            if ('set' in v.value) {
+              if (typeof v.value.set == 'function') setter = v.value.set;
+              if (typeof v.value.set == 'string') eval(`setter = function(v) { ${v.value.set.replace(/\$v([^a-zA-Z0-9])/g, (_,x) => `$.${p}${x}`)} }`);
+            }
+            for (let e of [p, ...a]) { e = e.trim();
+              pd[e] = { enumerable: t & 1, configurable: t & 4, get: getter ? getter : function() { return $[p]; } };
+              if (setter) pd[e].set = setter;
+          } } break;
+          case '?': if ('value' in v && typeof v.value == 'function') for (const e of [p, ...a]) {
+            if (!(e in pd)) pd[e] = {};
+            pd[e].get = v.value;
+            pd[e].enumerable = pd[e].enumerable !== undefined ? pd[e].enumerable & t & 1 : t & 1;
+            pd[e].configurable = pd[e].configurable !== undefined ? pd[e].configurable & t & 4 : t & 4;
+          } break;
+          case '!': if ('value' in v && typeof v.value == 'function') for (const e of [p, ...a]) {
+            if (!(e in pd)) pd[e] = {};
+            pd[e].set = v.value;
+            pd[e].enumerable = pd[e].enumerable !== undefined ? pd[e].enumerable & t & 1 : t & 1;
+            pd[e].configurable = pd[e].configurable !== undefined ? pd[e].configurable & t & 4 : t & 4;
+          } break;
+          default: pd[p] = v;
+            pd[p].enumerable = t & 1;
+            if ('value' in pd[p]) pd[p].writable = t & 2;
+            pd[p].configurable = t & 4;
+            for (let e of a) { e = e.trim(); pd[e] = { enumerable: t & 1, configurable: t & 4, get: function() { return this[p]; }, set(v) { this[p] = v; }}; }
+        } if (p != k) delete pd[k]; continue;
+    } } Object.seal($);
+    return pd;
   }
-  function create(p, s, ta, sa = 1) { return Object.create(p, fixPD(s, ta, sa)); }
-  function add(t, s, ta, sa = 1) { return Object.defineProperties(t, fixPD(s, ta, sa)); }
+  function create(p, s, ta, sa, h) { return Object.create(p, fixPD(s, ta, sa, h)); }
+  function add(t, s, ta, sa, h) { return Object.defineProperties(t, fixPD(s, ta, sa, h)); }
   function forEach(o, f, fs, fe, c, t = o, e, p, i = 0) {
     let a = (typeof fs == 'function' ? fs.call(t, o) : fs), I = i, r; fe = fe || (a => a);
     if (typeof e != 'number' || e < 0) e = Number.MAX_SAFE_INTEGER;

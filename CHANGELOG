@@ -1,0 +1,11 @@
+
+v1.1 - 2020-04-30
+
+  Added a feature to create "hidden properties" in objects produced by Type.create(),
+  or extended with Type.add(). These hidden properties use accessors (getters/setters)
+  to manipulate the actual data, which is held in a data object that need not, but can be,
+  referenced in the returned object.
+
+v1.0 - 2020-02-15
+
+  Initial release.

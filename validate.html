@@ -21,12 +21,24 @@ console.table(t);
 log('%c BOUNDS-CHECKED INDEX VALIDATION ', 'color:black;background-color:green;');
 elog("t = ['first','second','third']; log(t[Type.asIndex('0')], t[Type.asIndex(99, 3, 1)], t[Type.asIndex('foo', 3, 2)]);");
 
-log('%c CREATE AN OBJECT WITH SPECIFIED ATTRIBUTES (default: enumerable) ', 'color:black;background-color:green;');
-elog("t = Type.create({}, { foo: 88, 'bar,alias1,alias2:7': 99 }); log(Object.getOwnPropertyDescriptors(t)); log(t.bar, t.alias2 = 5, t.alias1, t.bar);");
-log('%c...or add properties to an existing object', 'color:green;');
+log('%c CREATE AN OBJECT WITH SPECIFIED ATTRIBUTES (default: enumerable for functions, enumerable+writable for everything else) ', 'color:black;background-color:green;');
+elog("t = Type.create(Object.prototype, { foo: 88, 'bar,alias1,alias2:7': 99 }); log(Object.getOwnPropertyDescriptors(t)); log(t.bar, t.alias2 = 5, t.alias1, t.bar);");
+log('%c...you can hide property values, forcing public access through accessor aliases', 'color:green;');
+elog(`t = Type.create(Object.prototype, { 'foo,alias1*': { value: 99, set: "if (typeof v == 'number') $v = v;" }, 'bar,alias2*': { value: 'word', set: "if (typeof v == 'string') $v = v;" }});`);
+elog(`log(Object.getOwnPropertyDescriptors(t));`);
+elog(`log(t.foo, t.alias1, t.bar, t.alias2);`);
+elog(`t.foo = 123; t.bar = 'changed'; log(t.foo, t.alias1, t.bar, t.alias2);`);
+elog(`t.foo = 'invalid'; t.bar = 235; log(t.foo, t.alias1, t.bar, t.alias2);`);
+log('%c...but you can still get direct access to the values aliased this way via a hidden property', 'color:green;');
+elog(`log(t);`);
+log('%cYou can also add properties to an existing object', 'color:green;');
 elog("log(Object.getOwnPropertyDescriptors(Type.add({ foo: 23 }, { bar: 83, yadda: 'something' })));");
 log('%c...or merge elements from one container to another', 'color:green');
 elog("log(Type.merge(new Map([['foo',64]]), { bar: 23 }));");
+log('%c...and with fill(), you can even populate objects with values from another object...', 'color:green;');
+elog("t = Type.create(Object.prototype, { 'color,foregroundColor': 'black', 'bgColor,backgroundColor': 'white' });");
+elog("log(Type.fill(t, { foregroundColor: 'red', backgroundColor: 'yellow', foo: 'bar' }));");
+log('%c...allowing only valid properties through, and selecting from one of more aliases.', 'color:green;');
 
 log('%c POINTER-LIKE VALUES ALLOW POST-INCREMENT EXPRESSIONS ', 'color:black;background-color:green;');
 elog("t = Index(); log(t.value, t(4), t(6), t.value, t(35), t.value);");
